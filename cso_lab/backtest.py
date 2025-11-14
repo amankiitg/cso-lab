@@ -1,6 +1,7 @@
 """
 Strategy backtesting framework.
 """
+import numpy as np
 import pandas as pd
 
 class Backtest:
