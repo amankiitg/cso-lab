@@ -1,0 +1,15 @@
+/* Custom styles for Panel dashboard */
+
+:root {
+    --primary-color: #1f77b4;
+    --secondary-color: #ff7f0e;
+    --background-color: #f8f9fa;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.bk-root h1 {
+    color: var(--primary-color);
+}
