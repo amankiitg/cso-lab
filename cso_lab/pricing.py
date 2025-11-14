@@ -2,6 +2,8 @@
 CSO pricing methods.
 """
 import numpy as np
+from scipy.stats import norm
+
 from .models import generate_correlated_paths
 
 def kirk_cso_price(F1, F2, K, sigma1, sigma2, rho, T):
