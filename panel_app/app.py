@@ -1,8 +1,15 @@
 # panel_app/app.py
-import panel as pn
+import os
+import sys
 from pathlib import Path
+import panel as pn
 
-# Import views
+# Add the project root to the Python path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+# Import views using absolute imports
 from panel_app.components.pricing_view import PricingView
 from panel_app.components.vol_surface_view import VolSurfaceView
 from panel_app.components.backtest_view import BacktestView

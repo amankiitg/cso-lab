@@ -1,24 +1,25 @@
 #!/bin/bash
 
-# Get the directory of this script
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+# Get the absolute path to the project root
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Add project root to Python path
-export PYTHONPATH="${PYTHONPATH}:${SCRIPT_DIR}"
+# Set Python path to include the project root
+export PYTHONPATH="${PROJECT_ROOT}:${PYTHONPATH}"
 
 # Default port if not set
 PORT=${PORT:-5006}
 
 echo "Starting CSO Analytics Dashboard on port $PORT..."
-echo "Python path: $PYTHONPATH"
+echo "Project root: ${PROJECT_ROOT}"
+echo "Python path: ${PYTHONPATH}"
 
 # Change to the project directory
-cd "${SCRIPT_DIR}" || exit 1
+cd "${PROJECT_ROOT}" || exit 1
 
-# Run the Panel server with autoreload for development
-python -m panel serve panel_app/app.py \
+# Run the application using the module syntax
+python -m panel serve panel_app.app \
     --address=0.0.0.0 \
-    --port=$PORT \
+    --port=${PORT} \
     --allow-websocket-origin="*" \
     --autoreload \
     --show \
