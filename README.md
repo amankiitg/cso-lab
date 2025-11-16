@@ -1,8 +1,14 @@
 # CSO Lab
 
+[![Live Demo](https://img.shields.io/badge/View-Live%20Demo-brightgreen)](https://cso-lab.onrender.com/app)
+
 A comprehensive toolkit for Commodity Spread Option (CSO) analysis, pricing, and trading strategy development with an interactive web interface.
 
-## Overview
+## 🚀 Live Demo
+
+Access the live application at: [https://cso-lab.onrender.com/app](https://cso-lab.onrender.com/app)
+
+## 📊 Overview
 
 This project provides tools for analyzing and pricing CSOs between Henry Hub (HH) Natural Gas and WTI Crude Oil, including:
 
