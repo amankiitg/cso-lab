@@ -290,35 +290,30 @@ class BacktestView:
             )
         return pn.pane.Markdown("Sensitivity plot not found")
 
+    def _wrap_plot(self, plot_func, min_height=300):
+        """Helper to wrap a plot in the appropriate pane type."""
+        plot = plot_func()
+        if isinstance(plot, (pn.pane.PNG, pn.pane.HTML, pn.pane.Markdown)):
+            return plot
+        return pn.pane.HoloViews(plot, sizing_mode='stretch_both', min_height=min_height)
+
     def _create_layout(self):
         """Create the dashboard layout with tabs for different views."""
         # Create plot cards
         self.pnl_plot = pn.Card(
-            pn.pane.HoloViews(
-                self._create_pnl_plot(),
-                sizing_mode='stretch_both',
-                min_height=400
-            ),
+            self._wrap_plot(self._create_pnl_plot, min_height=400),
             title="Cumulative PnL",
             sizing_mode='stretch_both'
         )
 
         self.drawdown_plot = pn.Card(
-            pn.pane.HoloViews(
-                self._create_drawdown_plot(),
-                sizing_mode='stretch_both',
-                min_height=300
-            ),
+            self._wrap_plot(self._create_drawdown_plot, min_height=300),
             title="Drawdown",
             sizing_mode='stretch_both'
         )
 
         self.sharpe_plot = pn.Card(
-            pn.pane.HoloViews(
-                self._create_rolling_sharpe(),
-                sizing_mode='stretch_both',
-                min_height=300
-            ),
+            self._wrap_plot(self._create_rolling_sharpe, min_height=300),
             title="Rolling Sharpe Ratio",
             sizing_mode='stretch_both'
         )
@@ -330,20 +325,18 @@ class BacktestView:
             min_height=400
         )
 
-        # In the _create_layout method, update the cards:
+        # Trades and sensitivity plots
         self.trades_plot = pn.Card(
-            self._create_trades_plot(),
+            self._wrap_plot(self._create_trades_plot, min_height=600),
             title="Trades",
-            sizing_mode='stretch_width',  # Changed from 'stretch_both'
-            height=600,  # Set fixed height
+            sizing_mode='stretch_width',
             min_height=1000
         )
 
         self.sensitivity_plot = pn.Card(
-            self._create_sensitivity_plot(),
+            self._wrap_plot(self._create_sensitivity_plot, min_height=600),
             title="Parameter Sensitivity",
-            sizing_mode='stretch_width',  # Changed from 'stretch_both'
-            height=600,  # Set fixed height
+            sizing_mode='stretch_width',
             min_height=1000
         )
 
