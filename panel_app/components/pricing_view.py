@@ -14,7 +14,7 @@ class PricingView:
     def __init__(self):
         # Default parameters
         self.default_params = {
-            'F1': 50.0,  # Forward price asset 1
+            'F1':66.0,  # Forward price asset 1
             'F2': 45.0,  # Forward price asset 2
             'K': 5.0,  # Strike price
             'sigma1': 0.3,  # Volatility asset 1

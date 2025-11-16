@@ -1,4 +1,3 @@
-# panel_app/components/backtest_view.py
 import panel as pn
 import pandas as pd
 import numpy as np
@@ -6,6 +5,7 @@ import holoviews as hv
 import hvplot.pandas
 from pathlib import Path
 from datetime import datetime
+import os
 
 
 class BacktestView:
@@ -17,100 +17,111 @@ class BacktestView:
         else:
             self.data_dir = Path(data_dir)
 
+        self.strategies = {}
+        self.current_strategy = None
         self.pnl_data = None
         self.stats = {}
-        self.plots_dir = self.data_dir / "plots"
+        self.sensitivity_data = None
+        self.plots_dir = None
 
         print(f"Using data directory: {self.data_dir.absolute()}")
 
+        # Initialize panel extension
+        pn.extension('tabulator', 'plotly')
+
+        # Scan for available strategies
+        self._scan_strategies()
+
         # Create widgets
         self._create_widgets()
-        self._load_backtest_data()
+
+        # Load initial data if strategies exist
+        if self.strategies:
+            self._update_backtest(None)
 
         # Create layout
         self.layout = self._create_layout()
 
+    def _scan_strategies(self):
+        """Scan the data directory for available strategies."""
+        strategy_dirs = [d for d in self.data_dir.glob('strategy*') if d.is_dir()]
+        for strategy_dir in strategy_dirs:
+            strategy_name = strategy_dir.name
+            self.strategies[strategy_name] = {
+                'path': strategy_dir,
+                'pnl_file': strategy_dir / 'backtest_pnl.csv',
+                'stats_file': strategy_dir / 'backtest_stats.txt',
+                'plots_dir': strategy_dir / 'plots',
+                'sensitivity_dir': strategy_dir / 'sensitivity'
+            }
+
     def _create_widgets(self):
         """Create interactive widgets."""
-        self.backtest_selector = pn.widgets.Select(
-            name='Select Backtest',
-            options=self._get_available_backtests(),
-            value=None
+        self.strategy_selector = pn.widgets.Select(
+            name='Select Strategy',
+            options=list(self.strategies.keys()) or ['No strategies found'],
+            value=list(self.strategies.keys())[0] if self.strategies else None
         )
+
         self.rolling_window = pn.widgets.IntSlider(
             name='Rolling Window (days)',
             start=5, end=252, step=5, value=21
         )
 
         # Wire up callbacks
-        self.backtest_selector.param.watch(self._update_backtest, 'value')
+        self.strategy_selector.param.watch(self._update_backtest, 'value')
+        self.rolling_window.param.watch(lambda e: self._update_plots(), 'value')
 
-    def _get_available_backtests(self):
-        """Get list of available backtest results."""
+    def _update_backtest(self, event):
+        """Update backtest data when strategy changes."""
+        strategy_name = self.strategy_selector.value
+        if not strategy_name or strategy_name not in self.strategies:
+            return
+
+        self.current_strategy = strategy_name
+        strategy = self.strategies[strategy_name]
+        self.plots_dir = strategy['plots_dir']
+
+        print(f"Loading data for strategy: {strategy_name}")
+
         try:
-            pnl_file = self.data_dir / 'backtest_pnl.csv'
-            if pnl_file.exists():
-                return ['Backtest Results']
-            return ['No backtest results found']
-        except Exception as e:
-            print(f"Error finding backtest files: {e}")
-            return ['No backtest results found']
-
-    def _load_backtest_data(self):
-        """Load backtest results from the data/outputs directory."""
-        try:
-            print(f"Looking for data in: {self.data_dir.absolute()}")
-
-            # Check if directory exists
-            if not self.data_dir.exists():
-                print(f"Directory does not exist: {self.data_dir.absolute()}")
-                self.pnl_data = self._generate_sample_data()
-                self.stats = self._generate_sample_stats()
-                return
-
-            # List all files in the directory for debugging
-            print("Files in directory:")
-            for f in self.data_dir.glob('*'):
-                print(f" - {f.name}")
-
             # Load PnL data
-            pnl_file = self.data_dir / 'backtest_pnl.csv'
-            print(f"Looking for PnL file at: {pnl_file.absolute()}")
-
-            if pnl_file.exists():
-                print("Found PnL file, loading...")
-                self.pnl_data = pd.read_csv(pnl_file, parse_dates=['date'], index_col='date')
-                print(f"Loaded PnL data with shape: {self.pnl_data.shape if self.pnl_data is not None else 'None'}")
-            else:
-                print("PnL file not found")
+            if strategy['pnl_file'].exists():
+                self.pnl_data = pd.read_csv(strategy['pnl_file'], parse_dates=['date'], index_col='date')
+                print(f"Loaded PnL data with shape: {self.pnl_data.shape}")
 
             # Load statistics
-            stats_file = self.data_dir / 'backtest_stats.txt'
-            print(f"Looking for stats file at: {stats_file.absolute()}")
-
-            if stats_file.exists():
-                print("Found stats file, loading...")
-                self.stats = self._parse_stats_file(stats_file)
+            if strategy['stats_file'].exists():
+                self.stats = self._parse_stats_file(strategy['stats_file'])
                 print(f"Loaded {len(self.stats)} stats")
-            else:
-                print("Stats file not found")
 
-            # Check plots directory
-            plots_dir = self.data_dir / 'plots'
-            if plots_dir.exists():
-                print("Plots directory exists")
-                print("Available plots:")
-                for p in plots_dir.glob('*.png'):
-                    print(f" - {p.name}")
-            else:
-                print(f"Plots directory not found at: {plots_dir.absolute()}")
+            # Update all plots
+            self._update_plots()
 
         except Exception as e:
-            print(f"Error loading backtest data: {str(e)}")
+            print(f"Error updating backtest: {str(e)}")
             import traceback
             traceback.print_exc()
-            self.pnl_data = self._generate_sample_data()
-            self.stats = self._generate_sample_stats()
+
+    def _update_plots(self):
+        """Update all plots when data changes."""
+        if hasattr(self, 'pnl_plot') and self.pnl_plot:
+            self.pnl_plot[0].object = self._create_pnl_plot()
+        if hasattr(self, 'drawdown_plot') and self.drawdown_plot:
+            self.drawdown_plot[0].object = self._create_drawdown_plot()
+        if hasattr(self, 'sharpe_plot') and self.sharpe_plot:
+            self.sharpe_plot[0].object = self._create_rolling_sharpe()
+        if hasattr(self, 'metrics_card') and self.metrics_card:
+            self.metrics_card[0].object = self._create_metrics_table()
+        if hasattr(self, 'trades_plot') and self.trades_plot:
+            self.trades_plot[0].object = self._create_trades_plot()
+        if hasattr(self, 'sensitivity_plot') and self.sensitivity_plot:
+            self._update_sensitivity_plot()
+
+    def _update_sensitivity_plot(self):
+        """Update sensitivity plot when data changes."""
+        if hasattr(self, 'sensitivity_plot') and self.sensitivity_plot:
+            self.sensitivity_plot[0].object = self._create_sensitivity_plot()
 
     def _parse_stats_file(self, file_path):
         """Parse stats from text file."""
@@ -131,42 +142,14 @@ class BacktestView:
             print(f"Error parsing stats file: {e}")
         return stats
 
-    def _generate_sample_data(self):
-        """Generate sample PnL data for demo purposes."""
-        date_range = pd.date_range(end=pd.Timestamp.today(), periods=252)
-        np.random.seed(42)
-        returns = np.random.normal(0.0005, 0.01, len(date_range))
-        cum_returns = np.cumprod(1 + returns) - 1
-
-        return pd.DataFrame({
-            'pnl': returns * 10000,  # Scale to bps
-            'cumulative_pnl': cum_returns * 10000,
-            'position': np.random.choice([-1, 0, 1], size=len(date_range), p=[0.2, 0.6, 0.2])
-        }, index=date_range)
-
-    def _generate_sample_stats(self):
-        """Generate sample performance statistics."""
-        return {
-            'Total Return': 1250.50,
-            'Annualized Return': 0.1875,
-            'Annualized Volatility': 0.1562,
-            'Sharpe Ratio': 1.2012,
-            'Max Drawdown': -0.1245,
-            'Win Rate': 0.5567,
-            'Profit Factor': 1.4532,
-            'Number of Trades': 42
-        }
-
     def _create_pnl_plot(self):
         """Create cumulative PnL plot."""
         if self.pnl_data is None or 'cumulative_pnl' not in self.pnl_data.columns:
-            # Try to load the plot from file if PnL data is not available
             png_file = self.plots_dir / 'cumulative_pnl.png'
             if png_file.exists():
                 return pn.pane.PNG(png_file, sizing_mode='scale_both')
             return hv.Curve([]).opts(title="No PnL data available")
 
-        # Create interactive plot if data is available
         plot = self.pnl_data['cumulative_pnl'].hvplot.line(
             title='Cumulative PnL',
             line_width=2,
@@ -178,27 +161,22 @@ class BacktestView:
             responsive=True,
             height=400
         )
-
-        # Add zero line
         zero_line = hv.HLine(0).opts(color='black', line_dash='dashed', alpha=0.5)
         return plot * zero_line
 
     def _create_drawdown_plot(self):
         """Create drawdown plot."""
         if self.pnl_data is None or 'cumulative_pnl' not in self.pnl_data.columns:
-            # Try to load the plot from file if PnL data is not available
             png_file = self.plots_dir / 'drawdown.png'
             if png_file.exists():
                 return pn.pane.PNG(png_file, sizing_mode='scale_both')
             return hv.Curve([]).opts(title="No drawdown data available")
 
-        # Calculate drawdown from cumulative PnL
         cum_pnl = self.pnl_data['cumulative_pnl']
-        cum_returns = 1 + cum_pnl / 10000  # Convert to simple returns
+        cum_returns = 1 + cum_pnl / 10000
         rolling_max = cum_returns.cummax()
         drawdown = (cum_returns - rolling_max) / rolling_max
 
-        # Create interactive plot
         plot = drawdown.hvplot.area(
             title='Drawdown',
             color='red',
@@ -210,8 +188,6 @@ class BacktestView:
             responsive=True,
             height=300
         )
-
-        # Add zero line
         zero_line = hv.HLine(0).opts(color='black', line_dash='dashed', alpha=0.5)
         return plot * zero_line
 
@@ -224,14 +200,13 @@ class BacktestView:
         if window >= len(self.pnl_data):
             return hv.Curve([]).opts(title="Not enough data for selected window")
 
-        returns = self.pnl_data['pnl'] / 10000  # Convert to decimal returns
-        rolling_mean = returns.rolling(window=window).mean() * 252  # Annualize
-        rolling_std = returns.rolling(window=window).std() * np.sqrt(252)  # Annualize
+        returns = self.pnl_data['pnl'] / 10000
+        rolling_mean = returns.rolling(window=window).mean() * 252
+        rolling_std = returns.rolling(window=window).std() * np.sqrt(252)
         rolling_sharpe = rolling_mean / rolling_std
         rolling_sharpe = rolling_sharpe.dropna()
 
-        # Create the plot with Bokeh-compatible options
-        plot = rolling_sharpe.hvplot.line(
+        return rolling_sharpe.hvplot.line(
             title=f'Rolling {window}-Day Sharpe Ratio',
             line_width=2,
             color='purple',
@@ -242,160 +217,169 @@ class BacktestView:
             height=300
         )
 
-        return plot
-
     def _create_metrics_table(self):
         """Create metrics table."""
         if not self.stats:
             return pn.pane.Markdown("No metrics available")
 
-        # Create a list of (display_name, stat_key, format_str) tuples
         stat_definitions = [
-            ("Total Return", "Total Return",
-             lambda x: f"{float(x):,.2f} bps" if isinstance(x, (int, float)) else str(x)),
-            ("Annualized Return", "Annualized Return",
-             lambda x: f"{float(x):.2%}" if isinstance(x, (int, float)) else str(x)),
-            ("Annualized Volatility", "Annualized Volatility",
-             lambda x: f"{float(x):.2%}" if isinstance(x, (int, float)) else str(x)),
-            ("Sharpe Ratio", "Sharpe Ratio",
-             lambda x: f"{float(x):.2f}" if isinstance(x, (int, float)) else str(x)),
-            ("Max Drawdown", "Max Drawdown",
-             lambda x: f"{float(x):.2%}" if isinstance(x, (int, float)) else str(x)),
-            ("Win Rate", "Win Rate",
-             lambda x: f"{float(x):.1%}" if isinstance(x, (int, float)) else str(x)),
-            ("Profit Factor", "Profit Factor",
-             lambda x: f"{float(x):.2f}" if isinstance(x, (int, float)) else str(x)),
-            ("Number of Trades", "Number of Trades",
-             lambda x: f"{int(x):,}" if str(x).isdigit() else str(x))
+            ("Total Return", "Total Return", "{:,.2f} bps"),
+            ("Annualized Return", "Annualized Return", "{:.2%}"),
+            ("Annualized Volatility", "Annualized Volatility", "{:.2%}"),
+            ("Sharpe Ratio", "Sharpe Ratio", "{:.2f}"),
+            ("Max Drawdown", "Max Drawdown", "{:.2%}"),
+            ("Win Rate", "Win Rate", "{:.1%}"),
+            ("Profit Factor", "Profit Factor", "{:.2f}"),
+            ("Number of Trades", "Number of Trades", "{:,.0f}")
         ]
 
-        # Create metrics list with formatted values
         metrics = []
-        for display_name, stat_key, formatter in stat_definitions:
+        for display_name, stat_key, fmt in stat_definitions:
             if stat_key in self.stats:
-                metrics.append((display_name, formatter(self.stats[stat_key])))
+                try:
+                    value = float(self.stats[stat_key])
+                    formatted_value = fmt.format(value)
+                    metrics.append((display_name, formatted_value))
+                except (ValueError, TypeError):
+                    metrics.append((display_name, str(self.stats[stat_key])))
 
         if not metrics:
             return pn.pane.Markdown("No valid metrics found in stats")
 
-        # Create a DataFrame for display
-        df = pd.DataFrame(metrics, columns=['Metric', 'Value'])
-
-        # Use a styled DataFrame for better appearance
-        return pn.pane.DataFrame(
-            df,
-            sizing_mode='stretch_width',
-            index=False,
-            width=400
+        return pn.widgets.Tabulator(
+            pd.DataFrame(metrics, columns=['Metric', 'Value']),
+            show_index=False,
+            disabled=True,
+            layout='fit_data_stretch',
+            sizing_mode='stretch_both'
         )
 
-    def _update_backtest(self, event):
-        """Update backtest data when selection changes."""
-        self._load_backtest_data()
-
     def _create_trades_plot(self):
-        """Create plot showing price and trades."""
+        """Create plot showing price and trades from saved PNG."""
+        if not hasattr(self, 'plots_dir') or self.plots_dir is None:
+            return pn.pane.Markdown("No plots directory found")
+
         png_file = self.plots_dir / 'price_chart_with_trades.png'
         if png_file.exists():
-            return pn.pane.PNG(png_file, sizing_mode='scale_both')
-        return pn.pane.Markdown("Trades plot not available")
+            return pn.pane.PNG(
+                png_file,
+                sizing_mode='scale_width',  # Changed from 'scale_both'
+                min_height=500,
+                max_height=800  # Add max height constraint
+            )
+        return pn.pane.Markdown("Trades plot not found")
+
+    def _create_sensitivity_plot(self):
+        """Show sensitivity plot from saved PNG."""
+        if not hasattr(self, 'current_strategy') or not self.current_strategy:
+            return pn.pane.Markdown("No strategy selected")
+
+        strategy = self.strategies.get(self.current_strategy, {})
+        sensitivity_dir = strategy.get('sensitivity_dir')
+
+        if not sensitivity_dir or not sensitivity_dir.exists():
+            return pn.pane.Markdown("Sensitivity data not available")
+
+        png_file = sensitivity_dir / 'sensitivity_analysis.png'
+        if png_file.exists():
+            return pn.pane.PNG(
+                png_file,
+                sizing_mode='scale_width',  # Changed from 'scale_both'
+                min_height=500,
+                max_height=800  # Add max height constraint
+            )
+        return pn.pane.Markdown("Sensitivity plot not found")
 
     def _create_layout(self):
-        """Create the dashboard layout with a 2x2 grid for plots and metrics."""
-        # Create the main plots with increased height
-        pnl_plot = pn.Card(
+        """Create the dashboard layout with tabs for different views."""
+        # Create plot cards
+        self.pnl_plot = pn.Card(
             pn.pane.HoloViews(
                 self._create_pnl_plot(),
                 sizing_mode='stretch_both',
                 min_height=400
             ),
             title="Cumulative PnL",
-            sizing_mode='stretch_both',
-            margin=(10, 10, 10, 10)
+            sizing_mode='stretch_both'
         )
-        
-        drawdown_plot = pn.Card(
+
+        self.drawdown_plot = pn.Card(
             pn.pane.HoloViews(
                 self._create_drawdown_plot(),
                 sizing_mode='stretch_both',
-                min_height=400
+                min_height=300
             ),
             title="Drawdown",
-            sizing_mode='stretch_both',
-            margin=(10, 10, 10, 10)
+            sizing_mode='stretch_both'
         )
-        
-        sharpe_plot = pn.Card(
+
+        self.sharpe_plot = pn.Card(
             pn.pane.HoloViews(
                 self._create_rolling_sharpe(),
                 sizing_mode='stretch_both',
-                min_height=400
+                min_height=300
             ),
             title="Rolling Sharpe Ratio",
-            sizing_mode='stretch_both',
-            margin=(10, 10, 10, 10)
+            sizing_mode='stretch_both'
         )
-        
-        # Create metrics card with increased height to match plots
-        metrics_card = pn.Card(
+
+        self.metrics_card = pn.Card(
             self._create_metrics_table(),
             title="Performance Metrics",
             sizing_mode='stretch_both',
-            margin=(10, 10, 10, 10),
             min_height=400
         )
-        
-        # Create trades plot card
-        trades_plot = pn.Card(
+
+        # In the _create_layout method, update the cards:
+        self.trades_plot = pn.Card(
             self._create_trades_plot(),
             title="Trades",
-            sizing_mode='stretch_both',
-            margin=(10, 10, 10, 10),
-            min_height=400
+            sizing_mode='stretch_width',  # Changed from 'stretch_both'
+            height=600,  # Set fixed height
+            min_height=500
         )
-        
-        # Create a 2x2 grid for the main plots and metrics
+
+        self.sensitivity_plot = pn.Card(
+            self._create_sensitivity_plot(),
+            title="Parameter Sensitivity",
+            sizing_mode='stretch_width',  # Changed from 'stretch_both'
+            height=600,  # Set fixed height
+            min_height=500
+        )
+
+        # Create a 2x2 grid for the main plots
         grid = pn.GridBox(
-            pnl_plot,
-            metrics_card,
-            drawdown_plot,
-            sharpe_plot,
+            self.pnl_plot,
+            self.metrics_card,
+            self.drawdown_plot,
+            self.sharpe_plot,
             ncols=2,
             nrows=2,
-            sizing_mode='stretch_both',
-            margin=(0, 10, 10, 10)
+            sizing_mode='stretch_both'
         )
-        
+
         # Controls
         controls = pn.Card(
-            self.backtest_selector,
+            self.strategy_selector,
             self.rolling_window,
             title="Backtest Controls",
             collapsed=False,
-            width=300,
-            margin=(10, 10, 10, 10)
+            width=300
         )
-        
-        # Wire up callbacks for interactive updates
-        self.rolling_window.param.watch(
-            lambda e: sharpe_plot[0].object.update(self._create_rolling_sharpe()), 'value'
-        )
-        
-        # Main layout with tabs for different views
+
+        # Main layout with tabs
         tabs = pn.Tabs(
-            ('Performance', pn.Column(
-                grid,
-                sizing_mode='stretch_both'
-            )),
-            ('Trades', trades_plot),
+            ('Performance', pn.Column(grid, sizing_mode='stretch_both')),
+            ('Trades', self.trades_plot),
+            ('Sensitivity', self.sensitivity_plot),
             sizing_mode='stretch_both'
         )
-        
+
         # Main layout
         return pn.Column(
             pn.Row(
                 pn.pane.Markdown(
-                    "## Backtest Results",
+                    "## Strategy Backtest Analysis",
                     margin=(10, 0, 10, 0)
                 ),
                 sizing_mode='stretch_width'
@@ -405,15 +389,14 @@ class BacktestView:
                 controls,
                 tabs,
                 sizing_mode='stretch_both',
-                min_height=800
+                min_height=900
             ),
-            sizing_mode='stretch_both',
-            min_height=900
+            sizing_mode='stretch_both'
         )
 
 
 # For testing the view standalone
 if __name__ == '__main__':
-    pn.extension(sizing_mode="stretch_width")
+    pn.extension('tabulator', 'plotly', sizing_mode="stretch_width")
     app = BacktestView()
     app.layout.servable()
