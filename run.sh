@@ -16,8 +16,8 @@ echo "Python path: ${PYTHONPATH}"
 # Change to the project directory
 cd "${PROJECT_ROOT}" || exit 1
 
-# Run the application using the module syntax
-python -m panel serve panel_app.app \
+# Run the application using the file path
+python -m panel serve panel_app/app.py \
     --address=0.0.0.0 \
     --port=${PORT} \
     --allow-websocket-origin="*" \
