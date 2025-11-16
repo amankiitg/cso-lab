@@ -1,60 +1,136 @@
 # CSO Lab
 
-A comprehensive toolkit for Commodity Spread Option (CSO) analysis, pricing, and trading strategy development.
+A comprehensive toolkit for Commodity Spread Option (CSO) analysis, pricing, and trading strategy development with an interactive web interface.
 
 ## Overview
 
-This project provides tools for analyzing and pricing CSOs between Henry Hub Natural Gas and WTI Crude Oil, including:
+This project provides tools for analyzing and pricing CSOs between Henry Hub (HH) Natural Gas and WTI Crude Oil, including:
 
-- Volatility surface modeling and calibration
-- Multiple CSO pricing methods (Kirk's approximation, Monte Carlo, numerical integration)
-- Correlation analysis and forecasting
-- Strategy backtesting framework
-- Interactive dashboard for real-time analysis
+- **Interactive Dashboard** with real-time visualization
+- **Volatility Surface Modeling** for both HH and WTI
+- **Pricing Methods**:
+  - Kirk's approximation
+  - Monte Carlo simulation
+  - Numerical integration
+- **Strategy Analysis**:
+  - Backtesting framework
+  - Performance metrics (PnL, Drawdown, Sharpe ratio)
+  - Trade visualization
+  - Parameter sensitivity analysis
 
 ## Project Structure
 
 ```
 cso-lab/
-├── data/              # Raw, processed, and synthetic data
-├── notebooks/         # Jupyter notebooks for research and analysis
-├── cso_lab/          # Core Python package
-└── panel_app/        # Interactive web dashboard
+├── data/                  # Data storage
+│   ├── raw/              # Raw market data
+│   ├── processed/        # Processed data files
+│   └── outputs/          # Backtest results and plots
+├── notebooks/            # Jupyter notebooks for research and analysis
+├── cso_lab/             # Core Python package
+│   ├── pricing.py       # Pricing models
+│   ├── backtest.py      # Backtesting framework
+│   └── data_utils.py    # Data processing utilities
+└── panel_app/           # Interactive web dashboard
+    ├── app.py           # Main application
+    ├── components/      # UI components
+    │   ├── backtest_view.py
+    │   ├── pricing_view.py
+    │   └── vol_surface_view.py
+    └── layout.py        # Application layout
 ```
+
+## Features
+
+### 1. Interactive Dashboard
+- **Pricing View**:
+  - Real-time CSO pricing with interactive sliders
+  - Sensitivity analysis for all parameters
+  - Visual representation of option value components
+
+- **Volatility Surface**:
+  - 3D visualization of implied and local volatility surfaces
+  - Term structure and volatility smile analysis
+  - Interactive slicing and inspection
+
+- **Backtesting**:
+  - Multi-strategy performance comparison
+  - Detailed trade analysis
+  - Risk metrics and performance attribution
+
+### 2. Core Functionality
+- Efficient CSO pricing with multiple methods
+- Volatility surface calibration
+- Correlation modeling between HH and WTI
+- Backtesting framework for strategy development
 
 ## Installation
 
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/cso-lab.git
+   cd cso-lab
+   ```
+
+2. Create and activate a virtual environment (recommended):
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   ```
+
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   pip install -e .
+   ```
+
+## Usage
+
+### Running the Dashboard
 ```bash
-pip install -e .
+panel serve panel_app/app.py --show
+```
+
+### Python API
+
+```python
+from cso_lab.pricing import kirk_cso_price
+
+# Price a CSO using Kirk's approximation
+price = kirk_cso_price(
+    F1=66.0,        # Forward price asset 1 (HH)
+    F2=45.0,        # Forward price asset 2 (WTI)
+    K=5.0,          # Strike price
+    sigma1=0.30,    # Volatility asset 1
+    sigma2=0.25,    # Volatility asset 2
+    rho=0.20,       # Correlation
+    T=1.0,          # Time to maturity (years)
+    r=0.05          # Risk-free rate
+)
 ```
 
 ## Requirements
 
 - Python 3.8+
-- NumPy, Pandas, SciPy
-- Matplotlib, Seaborn
-- Panel (for dashboard)
+- Core Dependencies:
+  - numpy
+  - pandas
+  - scipy
+  - numba (for performance optimization)
+- Visualization:
+  - panel
+  - holoviews
+  - bokeh
+  - matplotlib
+  - seaborn
 
-## Usage
+## Contributing
 
-### Python API
-
-```python
-from cso_lab import pricing, vol_surface
-
-# Price a CSO
-option_price = pricing.kirk_approximation(
-    S1=3.50, S2=75.0, K=0, T=0.25,
-    sigma1=0.30, sigma2=0.25, rho=0.40, r=0.05
-)
-```
-
-### Dashboard
-
-```bash
-panel serve panel_app/app.py
-```
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
 MIT License
+
+---
+*Note: This project is for educational and research purposes only. Not financial advice.*
