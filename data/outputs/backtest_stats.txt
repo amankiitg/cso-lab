@@ -1,0 +1,12 @@
+Backtest Performance Statistics
+==================================================
+
+Total Return: 0.78886714863825
+Total Return Pct: 22.9154
+Annualized Return: 1.0074003794213144
+Annualized Vol: 0.4131149539942211
+Sharpe Ratio: 2.4385
+Max Drawdown: -7.81%
+Win Rate: 0.1471
+Profit Factor: 2.0618184381575078
+Num Trades: 4
