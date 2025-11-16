@@ -1,0 +1,11 @@
+Backtest Performance - strategy3_momentum
+==================================================
+Total Return: 0.7394476707840683
+Total Return Pct: 21.4799
+Annualized Return: 0.9387537201253832
+Annualized Vol: 0.41235190797676513
+Sharpe Ratio: 2.2766
+Max Drawdown: -8.07%
+Win Rate: 0.1471
+Profit Factor: 1.9487210993306927
+Num Trades: 4

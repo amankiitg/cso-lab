@@ -1,0 +1,11 @@
+Backtest Performance - strategy4_breakout
+==================================================
+Total Return: 0.5339256185354311
+Total Return Pct: 15.5097
+Annualized Return: 0.378776932414894
+Annualized Vol: 0.35678953489845633
+Sharpe Ratio: 1.0616
+Max Drawdown: -8.06%
+Win Rate: 0.1176
+Profit Factor: 1.3881172251899492
+Num Trades: 3

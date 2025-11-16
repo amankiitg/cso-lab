@@ -1,0 +1,11 @@
+Backtest Performance - strategy2_technical
+==================================================
+Total Return: 0.5781287363142732
+Total Return Pct: 16.7938
+Annualized Return: 0.4338748904411658
+Annualized Vol: 0.35668649648744416
+Sharpe Ratio: 1.2164
+Max Drawdown: -7.80%
+Win Rate: 0.1176
+Profit Factor: 1.460603546223171
+Num Trades: 3
