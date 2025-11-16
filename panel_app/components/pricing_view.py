@@ -231,6 +231,15 @@ class PricingView:
             collapsed=False
         )
 
+        # Create a taller sensitivity plot container
+        sensitivity_plot_pane = pn.pane.HoloViews(
+            self.sensitivity_plot,
+            sizing_mode='stretch_width',
+            min_height=200,  # Increased minimum height
+            height=300,      # Fixed height
+            margin=(10, 0)   # Add some vertical margin
+        )
+
         # Main layout
         return pn.Row(
             pn.Column(
@@ -240,14 +249,16 @@ class PricingView:
                     sizing_mode='stretch_width'
                 ),
                 pn.Row(
-                    pn.pane.HoloViews(
-                        self.sensitivity_plot,
-                        sizing_mode='stretch_both'
-                    )
+                    pn.Column(
+                        sensitivity_plot_pane,
+                        sizing_mode='stretch_width'
+                    ),
+                    sizing_mode='stretch_width'
                 ),
-                sizing_mode='stretch_both'
+                sizing_mode='stretch_width',
+                height=1000  # Ensure the column has enough height
             ),
-            sizing_mode='stretch_both'
+            sizing_mode='stretch_width'
         )
 
 

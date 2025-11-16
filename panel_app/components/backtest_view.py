@@ -336,7 +336,7 @@ class BacktestView:
             title="Trades",
             sizing_mode='stretch_width',  # Changed from 'stretch_both'
             height=600,  # Set fixed height
-            min_height=500
+            min_height=1000
         )
 
         self.sensitivity_plot = pn.Card(
@@ -344,7 +344,7 @@ class BacktestView:
             title="Parameter Sensitivity",
             sizing_mode='stretch_width',  # Changed from 'stretch_both'
             height=600,  # Set fixed height
-            min_height=500
+            min_height=1000
         )
 
         # Create a 2x2 grid for the main plots
