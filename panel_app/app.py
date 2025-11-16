@@ -41,29 +41,36 @@ def serve_application(port: int = 5006, show: bool = True, **kwargs):
         show: Whether to open the app in a browser
         **kwargs: Additional arguments to pass to pn.serve
     """
+    # Initialize the application
     app = initialize_application()
-
-    # Use a different template to avoid the template_resources error
+    
+    # Create and configure the template
     template = pn.template.FastListTemplate(
         title='CSO Analytics Dashboard',
         theme='default'
     )
+    
+    # Add the app to the main area of the template
     template.main.append(app)
+    
+    # Mark the template as servable
+    template.servable()
+    
+    # For development, we'll also return the template
+    if pn.state.served:
+        return template
+        
+    # For panel serve
+    return pn.panel(template).servable()
 
-    pn.serve(
-        template,
-        port=port,
-        show=show,
-        **{
-            'title': 'CSO Analytics Dashboard',
-            **kwargs
-        }
-    )
 
+# For gunicorn or similar
+app = initialize_application()
 
-# For production with gunicorn or similar
-# app = initialize_application()
-
-# For development
-if __name__ == '__main__':
-    serve_application(autoreload=True)
+if __name__.startswith('bokeh_app') or __name__ == "__main__":
+    # For development and when run directly
+    if __name__ == "__main__":
+        serve_application(show=True, autoreload=True)
+    # For bokeh serve
+    else:
+        app.servable()
