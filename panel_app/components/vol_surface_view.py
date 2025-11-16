@@ -33,21 +33,31 @@ class VolSurfaceView:
         )
         self.slice_strike = pn.widgets.FloatSlider(
             name='Slice Strike (%)',
-            start=70, end=130, step=5, value=100
+            start=70, end=130, step=5, value=95
         )
 
     def _load_vol_data(self, asset='HH'):
         """Load or generate sample volatility surface data."""
-        # In a real app, you would load this from a file
         tenors = np.linspace(0.1, 2.0, 20)
         strikes = np.linspace(70, 130, 20)
         tt, kk = np.meshgrid(tenors, strikes)
 
-        # Simple parametric vol surface
-        atm_vol = 0.3
-        skew = -0.2
-        term = 0.1
-        vol_surface = atm_vol + skew * (kk / 100 - 1) + term * np.sqrt(tt)
+        # Base parameters - different for WTI and HH
+        if asset == 'WTI':
+            atm_vol = 0.35  # Higher base vol for WTI
+            skew = -0.25  # More negative skew for WTI
+            term = 0.12  # Stronger term structure for WTI
+        else:  # HH
+            atm_vol = 0.28  # Lower base vol for HH
+            skew = -0.15  # Less negative skew for HH
+            term = 0.08  # Weaker term structure for HH
+
+        if self.surface_type.value == 'Implied Volatility':
+            # Flatter surface for implied vol
+            vol_surface = atm_vol + skew * 0.7 * (kk / 100 - 1) + term * np.sqrt(tt)
+        else:
+            # More pronounced surface for local vol
+            vol_surface = atm_vol + skew * 1.3 * (kk / 100 - 1) + term * 1.5 * np.sqrt(tt)
 
         self.vol_data = pd.DataFrame({
             'tenor': tt.ravel(),
@@ -129,21 +139,26 @@ class VolSurfaceView:
             ylim=(0, None)
         )
 
+    def _update_plots(self):
+        """Update all plots when parameters change."""
+        self.surface_plot.object = self._create_3d_surface()
+        self.term_structure.object = self._create_term_structure()
+        self.vol_smile.object = self._create_vol_smile()
+
     def _create_layout(self):
         """Create the dashboard layout."""
-        # 3D surface plot
-        surface_plot = pn.pane.HoloViews(
+        # Create plot containers
+        self.surface_plot = pn.pane.HoloViews(
             self._create_3d_surface(),
             sizing_mode='stretch_both'
         )
 
-        # Slices
-        term_structure = pn.pane.HoloViews(
+        self.term_structure = pn.pane.HoloViews(
             self._create_term_structure(),
             sizing_mode='stretch_both'
         )
 
-        vol_smile = pn.pane.HoloViews(
+        self.vol_smile = pn.pane.HoloViews(
             self._create_vol_smile(),
             sizing_mode='stretch_both'
         )
@@ -159,29 +174,17 @@ class VolSurfaceView:
         )
 
         # Wire up callbacks for interactive updates
-        self.slice_tenor.param.watch(
-            lambda e: vol_smile.object.update(self._create_vol_smile()), 'value'
-        )
-        self.slice_strike.param.watch(
-            lambda e: term_structure.object.update(self._create_term_structure()), 'value'
-        )
-        self.asset_selector.param.watch(
-            lambda e: (
-                self._load_vol_data(asset=e.new),
-                surface_plot.object.update(self._create_3d_surface()),
-                term_structure.object.update(self._create_term_structure()),
-                vol_smile.object.update(self._create_vol_smile())
-            ), 'value'
-        )
+        for widget in [self.slice_tenor, self.slice_strike, self.asset_selector, self.surface_type]:
+            widget.param.watch(lambda _: self._update_plots(), 'value')
 
         # Layout
         return pn.Row(
             controls,
             pn.Column(
-                surface_plot,
+                self.surface_plot,
                 pn.Row(
-                    term_structure,
-                    vol_smile,
+                    self.term_structure,
+                    self.vol_smile,
                     sizing_mode='stretch_both'
                 ),
                 sizing_mode='stretch_both'
