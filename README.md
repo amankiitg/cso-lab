@@ -6,7 +6,10 @@ A comprehensive toolkit for Commodity Spread Option (CSO) analysis, pricing, and
 
 ## 🚀 Live Demo
 
-Access the live application at: [https://cso-lab.onrender.com/app](https://cso-lab.onrender.com/app)
+Access the live application at: [https://cso-lab.onrender.com/app](https://cso-lab.onrender.com/app) It may take some time to load if you are loading for the first time.
+
+![Screen Recording 2025-11-20 at 6 50 46 PM](https://github.com/user-attachments/assets/34f204c7-1ccd-4055-abbc-198c952050ef)
+
 
 ## 📊 Overview
 
